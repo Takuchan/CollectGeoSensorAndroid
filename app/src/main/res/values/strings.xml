@@ -1,0 +1,18 @@
+<resources>
+    <string name="app_name">SensorToML</string>
+    <string name="action_settings">Settings</string>
+    <!-- Strings used for fragments for navigation -->
+    <string name="first_fragment_label">First Fragment</string>
+    <string name="second_fragment_label">Second Fragment</string>
+    <string name="next">Next</string>
+    <string name="previous">Previous</string>
+
+    <string name="hello_first_fragment">Hello first fragment</string>
+    <string name="hello_second_fragment">Hello second fragment. Arg: %1$s</string>
+
+    <string name="TYPE_ACCELEROMETER_Text">加速度センサー</string>
+    <string name="TYPE_ORIENTATION_Text">方位（傾き）センサー</string>
+    <string name="TYPE_GYROSCOPE_Text">ジャイロスコープセンサー</string>
+    <string name="TYPE_LINEAR_ACCELERATION_Text">直線加速度センサー</string>
+    <string name="TYPE_ROTATION_VECTOR_Text">回転速度センサー</string>
+</resources>
