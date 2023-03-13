@@ -15,4 +15,6 @@
     <string name="TYPE_GYROSCOPE_Text">ジャイロスコープセンサー</string>
     <string name="TYPE_LINEAR_ACCELERATION_Text">直線加速度センサー</string>
     <string name="TYPE_ROTATION_VECTOR_Text">回転速度センサー</string>
+    <!-- TODO: Remove or change this placeholder text -->
+    <string name="hello_blank_fragment">Hello blank fragment</string>
 </resources>
