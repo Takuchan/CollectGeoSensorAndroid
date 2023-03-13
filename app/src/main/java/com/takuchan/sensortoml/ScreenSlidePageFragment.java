@@ -1,6 +1,7 @@
 package com.takuchan.sensortoml;
 
 import android.graphics.Color;
+import android.hardware.Sensor;
 import android.os.Bundle;
 
 import androidx.fragment.app.Fragment;
@@ -13,6 +14,7 @@ import com.github.mikephil.charting.charts.LineChart;
 import com.github.mikephil.charting.data.Entry;
 import com.github.mikephil.charting.data.LineData;
 import com.github.mikephil.charting.data.LineDataSet;
+import com.takuchan.database.sampledata.SensorListDatabase;
 
 import java.lang.reflect.Array;
 import java.util.ArrayList;
@@ -20,10 +22,10 @@ import java.util.ArrayList;
 
 public class ScreenSlidePageFragment extends Fragment {
 
-    private ArrayList<GetSensorValueModel> accelerometerList = new ArrayList<GetSensorValueModel>();
-    private ArrayList<GetSensorValueModel> gyroscopeList = new ArrayList<GetSensorValueModel>();
-    private ArrayList<GetSensorValueModel> linearAcceleList = new ArrayList<GetSensorValueModel>();
-    private ArrayList<GetSensorValueModel> rotationList = new ArrayList<GetSensorValueModel>();
+    private ArrayList<GetSensorValueModel> accelerometerList = new ArrayList<>();
+    private ArrayList<GetSensorValueModel> gyroscopeList = new ArrayList<>();
+    private ArrayList<GetSensorValueModel> linearAcceleList = new ArrayList<>();
+    private ArrayList<GetSensorValueModel> rotationList = new ArrayList<>();
 
     LineChart acclelerometerChart,gyroscopeChart,linear_accChart,rotationChart;
 
