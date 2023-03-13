@@ -25,6 +25,9 @@ import com.github.mikephil.charting.data.Entry;
 import com.github.mikephil.charting.data.LineData;
 import com.github.mikephil.charting.data.LineDataSet;
 import com.google.android.material.floatingactionbutton.FloatingActionButton;
+import com.takuchan.database.sampledata.GetSensorValueDatabase;
+import com.takuchan.database.sampledata.SensorListDatabase;
+import com.takuchan.database.sampledata.SensorValueDatabase;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -37,7 +40,7 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
     private Button exportButton,startButton;
     private ViewPager2 viewPager2;
     public static TextView countDownText;
-    LineChart acclelerometerChart,gyroscopeChart,linear_accChart,rotationChart;
+
     private FloatingActionButton fab;
     private ArrayList<GetSensorValueModel> accelerometerList = new ArrayList<GetSensorValueModel>();
     private ArrayList<GetSensorValueModel> gyroscopeList = new ArrayList<GetSensorValueModel>();
@@ -53,6 +56,8 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
     private static final int NUM_PAGES = 5;
 
     Realm realm;
+
+    public static long nowDatabasePrimarykey = -1;
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -63,23 +68,18 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
         startButton = findViewById(R.id.button2);
         exportButton = findViewById(R.id.button);
         countDownText = findViewById(R.id.countdownText);
-        acclelerometerChart = findViewById(R.id.ACCELEROMETERchart);
-        gyroscopeChart = findViewById(R.id.GYROSCOPEchart);
-
         viewPager2 = findViewById(R.id.pager2);
         pagerAdapter = new ScreenSlidePagerAdapter(this);
         viewPager2.setAdapter(pagerAdapter);
-
-        linear_accChart = findViewById(R.id.LINEAR_ACCELERATIONchart);
-        rotationChart = findViewById(R.id.ROTATION_VECTORchart);
         Realm.init(this);
         realm = Realm.getDefaultInstance();
-
         fab.setVisibility(View.GONE);
         countDownText.setVisibility(View.GONE);
 
         //タイマーのインスタンスを作成
         final CountDown countDown = new CountDown(countNumber,interval);
+
+
         startButton.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
@@ -90,6 +90,15 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
                     countDownText.setVisibility(View.GONE);
                     sensorManager.unregisterListener(MainActivity.this);
                 }else{
+                    if(nowDatabasePrimarykey == -1){
+                        //データベースを新規作成
+                        Number maxId = realm.where(GetSensorValueDatabase.class).max("id");
+                        long nextId = 1;
+                        if(maxId != null) nextId = maxId.longValue() + 1;
+                        GetSensorValueDatabase getSensorValueDatabase
+                                = realm.createObject(GetSensorValueDatabase.class,new Long(nextId));
+                        nowDatabasePrimarykey = nextId;
+                    }
                     countDown.start();
                     countDownText.setVisibility(View.VISIBLE);
                     startButton.setText("計測停止");
@@ -116,45 +125,55 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
         fab.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
-                LineData accelerometerData = ReadyGraphData(accelerometerList);
-                acclelerometerChart.setData(accelerometerData);
-                acclelerometerChart.invalidate();
-                LineData gyroData = ReadyGraphData(gyroscopeList);
-                gyroscopeChart.setData(gyroData);
-                gyroscopeChart.invalidate();
-                LineData linearData = ReadyGraphData(linearAcceleList);
-                linear_accChart.setData(linearData);
-                linear_accChart.invalidate();
-                LineData rotationData = ReadyGraphData(rotationList);
-                rotationChart.setData(rotationData);
-                rotationChart.invalidate();
+                realm.executeTransaction(new Realm.Transaction() {
+                    @Override
+                    public void execute(Realm realm) {
+                        GetSensorValueDatabase getSensorValueDatabase =
+                                realm.where(GetSensorValueDatabase.class).equalTo("id",nowDatabasePrimarykey).findFirst();
+                        getSensorValueDatabase.examName = "テスト";
+
+                        //保存される側のMaxIDも見つけてみよう！
+                        Number maxId = realm.where(SensorListDatabase.class).max("id");
+                        long nextId = 1;
+                        if(maxId != null) nextId = maxId.longValue() + 1;
+                        SensorListDatabase sensorListDatabase
+                                = realm.createObject(SensorListDatabase.class,new Long(nextId));
+                        for(GetSensorValueModel model : accelerometerList){
+                            sensorListDatabase.sensorValueDatabases.add(new SensorValueDatabase(model.getXValue(),model.getYValue(),model.getZValue()));
+                        }
+                        getSensorValueDatabase.accelerometerList.add(sensorListDatabase);
+
+                        SensorListDatabase sensorListDatabase2
+                                = realm.createObject(SensorListDatabase.class,new Long(nextId));
+                        for(GetSensorValueModel model : gyroscopeList){
+                            sensorListDatabase2.sensorValueDatabases.add(new SensorValueDatabase(model.getXValue(),model.getYValue(),model.getZValue()));
+                        }
+                        getSensorValueDatabase.gyroscopeList.add(sensorListDatabase);
+
+                        SensorListDatabase sensorListDatabase3
+                                = realm.createObject(SensorListDatabase.class,new Long(nextId));
+                        for(GetSensorValueModel model : linearAcceleList){
+                            sensorListDatabase.sensorValueDatabases.add(new SensorValueDatabase(model.getXValue(),model.getYValue(),model.getZValue()));
+                        }
+                        getSensorValueDatabase.linearaccleList.add(sensorListDatabase);
+
+                        SensorListDatabase sensorListDatabase4
+                                = realm.createObject(SensorListDatabase.class,new Long(nextId));
+                        for(GetSensorValueModel model : rotationList){
+                            sensorListDatabase.sensorValueDatabases.add(new SensorValueDatabase(model.getXValue(),model.getYValue(),model.getZValue()));
+                        }
+                        getSensorValueDatabase.rotationList.add(sensorListDatabase);
+
+
+                    }
+                });
                 measureToggle = !measureToggle;
             }
         });
 
     }
 
-    public static LineData ReadyGraphData(ArrayList<GetSensorValueModel> sensorArrayList){
-        ArrayList<Entry> xValues = new ArrayList<>();
-        ArrayList<Entry> yValues = new ArrayList<>();
-        ArrayList<Entry> zValues = new ArrayList<>();
-        int count = 0;
-        for (GetSensorValueModel model : sensorArrayList){
-            xValues.add(new Entry(count,model.getXValue()));
-            yValues.add(new Entry(count,model.getYValue()));
-            zValues.add(new Entry(count,model.getZValue()));
-            count ++;
-        }
-        LineDataSet set1 = new LineDataSet(xValues,"X");
-        LineDataSet set2 = new LineDataSet(yValues,"Y");
-        LineDataSet set3 = new LineDataSet(zValues,"Z");
-        set1.setColor(Color.RED);
-        set2.setColor(Color.BLUE);
-        set3.setColor(Color.GREEN);
 
-        LineData lineData = new LineData(set1,set2,set3);
-        return lineData;
-    }
     // 解除するコードも入れる!
     @Override
     protected void onPause() {

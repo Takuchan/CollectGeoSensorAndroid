@@ -1,6 +1,6 @@
 package com.takuchan.sensortoml;
 
-public class GetSensorValueModel {
+public class GetSensorValueModel{
     private float x;
     private float y;
     private float z;
@@ -20,4 +20,3 @@ public class GetSensorValueModel {
         return this.z;
     }
 }
-
