@@ -13,6 +13,7 @@ import android.hardware.SensorManager;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.Looper;
+import android.util.Log;
 import android.view.View;
 import android.widget.Button;
 import android.widget.TextView;
@@ -53,6 +54,8 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
     Realm realm;
 
     public static long nowDatabasePrimarykey = -1;
+
+    private GetSensorValueDatabase getSensorValueDatabase;
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -74,7 +77,6 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
         //タイマーのインスタンスを作成
         final CountDown countDown = new CountDown(countNumber,interval);
 
-
         startButton.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
@@ -87,14 +89,21 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
                 }else{
                     if(nowDatabasePrimarykey == -1){
                         //データベースを新規作成
-                        realm.beginTransaction();
+
                         Number maxId = realm.where(GetSensorValueDatabase.class).max("id");
                         long nextId = 1;
                         if(maxId != null) nextId = maxId.longValue() + 1;
-                        GetSensorValueDatabase getSensorValueDatabase
-                                = realm.createObject(GetSensorValueDatabase.class,new Long(nextId));
+                        long finalNextId = nextId;
+                        realm.executeTransaction(new Realm.Transaction() {
+                            @Override
+                            public void execute(Realm realm) {
+                                getSensorValueDatabase
+                                        = realm.createObject(GetSensorValueDatabase.class,new Long(finalNextId));
+                                getSensorValueDatabase.examName = "いいね";
+                            }
+                        });
+
                         nowDatabasePrimarykey = nextId;
-                        realm.cancelTransaction();
                     }
                     countDown.start();
                     countDownText.setVisibility(View.VISIBLE);
@@ -122,68 +131,67 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
         fab.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
-
-                
+//                保存される側のMaxIDも見つけてみよう！
                 GetSensorValueDatabase getSensorValueDatabase =
                         realm.where(GetSensorValueDatabase.class).equalTo("id",nowDatabasePrimarykey).findFirst();
-
-                //保存される側のMaxIDも見つけてみよう！
-                realm.beginTransaction();
+                Log.d("getsensorValueDatabase",String.valueOf(getSensorValueDatabase));
                 Number maxId = realm.where(SensorListDatabase.class).max("id");
                 long nextId = 1;
                 if(maxId != null) nextId = maxId.longValue() + 1;
-                SensorListDatabase sensorListDatabase
-                        = realm.createObject(SensorListDatabase.class,new Long(nextId));
+//                SensorListDatabase sensorListDatabase
+//                        = realm.createObject(SensorListDatabase.class,new Long(nextId));
                 for(GetSensorValueModel model : accelerometerList){
                     SensorValueDatabase sensorValueDatabase = new SensorValueDatabase();
                     sensorValueDatabase.x = model.getXValue();
                     sensorValueDatabase.y = model.getYValue();
                     sensorValueDatabase.z = model.getZValue();
+                    SensorListDatabase sensorListDatabase = new SensorListDatabase();
                     sensorListDatabase.sensorValueDatabases.add(sensorValueDatabase);
+                    realm.executeTransaction(new Realm.Transaction() {
+                        @Override
+                        public void execute(Realm realm) {
+                            getSensorValueDatabase.accelerometerList.add(sensorListDatabase);
+                        }
+                    });
                 }
-                getSensorValueDatabase.accelerometerList.add(sensorListDatabase);
-                realm.cancelTransaction();
-                realm.beginTransaction();
-                SensorListDatabase sensorListDatabase2
-                        = realm.createObject(SensorListDatabase.class,new Long(nextId));
-                for(GetSensorValueModel model : gyroscopeList){
-                    SensorValueDatabase sensorValueDatabase = new SensorValueDatabase();
-                    sensorValueDatabase.x = model.getXValue();
-                    sensorValueDatabase.y = model.getYValue();
-                    sensorValueDatabase.z = model.getZValue();
-                    sensorListDatabase2.sensorValueDatabases.add(sensorValueDatabase);
-                }
-                getSensorValueDatabase.gyroscopeList.add(sensorListDatabase);
-                realm.cancelTransaction();
-                realm.beginTransaction();
-                SensorListDatabase sensorListDatabase3
-                        = realm.createObject(SensorListDatabase.class,new Long(nextId));
-                for(GetSensorValueModel model : linearAcceleList){
-                    SensorValueDatabase sensorValueDatabase = new SensorValueDatabase();
-                    sensorValueDatabase.x = model.getXValue();
-                    sensorValueDatabase.y = model.getYValue();
-                    sensorValueDatabase.z = model.getZValue();
-                    sensorListDatabase3.sensorValueDatabases.add(sensorValueDatabase);
-                }
-                getSensorValueDatabase.linearaccleList.add(sensorListDatabase);
-                realm.cancelTransaction();
-                realm.beginTransaction();
-                SensorListDatabase sensorListDatabase4
-                        = realm.createObject(SensorListDatabase.class,new Long(nextId));
-                for(GetSensorValueModel model : rotationList){
-                    SensorValueDatabase sensorValueDatabase = new SensorValueDatabase();
-                    sensorValueDatabase.x = model.getXValue();
-                    sensorValueDatabase.y = model.getYValue();
-                    sensorValueDatabase.z = model.getZValue();
-                    sensorListDatabase4.sensorValueDatabases.add(sensorValueDatabase);
-                }
-                getSensorValueDatabase.rotationList.add(sensorListDatabase);
+//                getSensorValueDatabase.accelerometerList.add(sensorListDatabase);
+//
+//                SensorListDatabase sensorListDatabase2
+//                        = realm.createObject(SensorListDatabase.class,new Long(nextId));
+//                for(GetSensorValueModel model : gyroscopeList){
+//                    SensorValueDatabase sensorValueDatabase = new SensorValueDatabase();
+//                    sensorValueDatabase.x = model.getXValue();
+//                    sensorValueDatabase.y = model.getYValue();
+//                    sensorValueDatabase.z = model.getZValue();
+//                    sensorListDatabase2.sensorValueDatabases.add(sensorValueDatabase);
+//                }
+//                getSensorValueDatabase.gyroscopeList.add(sensorListDatabase);
+//
+//                SensorListDatabase sensorListDatabase3
+//                        = realm.createObject(SensorListDatabase.class,new Long(nextId));
+//                for(GetSensorValueModel model : linearAcceleList){
+//                    SensorValueDatabase sensorValueDatabase = new SensorValueDatabase();
+//                    sensorValueDatabase.x = model.getXValue();
+//                    sensorValueDatabase.y = model.getYValue();
+//                    sensorValueDatabase.z = model.getZValue();
+//                    sensorListDatabase3.sensorValueDatabases.add(sensorValueDatabase);
+//                }
+//                getSensorValueDatabase.linearaccleList.add(sensorListDatabase);
+//                SensorListDatabase sensorListDatabase4
+//                        = realm.createObject(SensorListDatabase.class,new Long(nextId));
+//                for(GetSensorValueModel model : rotationList){
+//                    SensorValueDatabase sensorValueDatabase = new SensorValueDatabase();
+//                    sensorValueDatabase.x = model.getXValue();
+//                    sensorValueDatabase.y = model.getYValue();
+//                    sensorValueDatabase.z = model.getZValue();
+//                    sensorListDatabase4.sensorValueDatabases.add(sensorValueDatabase);
+//                }
+//                getSensorValueDatabase.rotationList.add(sensorListDatabase);
 
                 accelerometerList.clear();
                 gyroscopeList.clear();
                 linearAcceleList.clear();
                 rotationList.clear();
-                realm.cancelTransaction();
                 measureToggle = !measureToggle;
             }
         });
@@ -251,42 +259,44 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
                     .equalTo("id", nowDatabasePrimarykey)
                     .findAll();
 
-            if(!realmResults.isEmpty()){
+            Log.d("今のページ番号は",String.valueOf(position));
+            if(!realmResults.isEmpty()) {
                 GetSensorValueDatabase getSensorValueDatabase =
-                        realm.where(GetSensorValueDatabase.class).equalTo("id",nowDatabasePrimarykey).findFirst();
+                        realm.where(GetSensorValueDatabase.class).equalTo("id", nowDatabasePrimarykey).findFirst();
                 //加速度センサー
                 accelerometerList.clear();
                 RealmList<SensorListDatabase> sensorListDatabaseRealmList = getSensorValueDatabase.accelerometerList;
                 SensorListDatabase sensorListDatabase1 = sensorListDatabaseRealmList.get(position);
                 RealmList<SensorValueDatabase> sensorValueDatabaseRealmList = sensorListDatabase1.sensorValueDatabases;
-                for(SensorValueDatabase sensorValue: sensorValueDatabaseRealmList){
-                    accelerometerList.add(new GetSensorValueModel(sensorValue.x,sensorValue.y,sensorValue.z));
-                }
-                //ジャイロスコープセンサー
-                gyroscopeList.clear();
-                RealmList<SensorListDatabase> sensorListDatabaseRealmList2 = getSensorValueDatabase.gyroscopeList;
-                SensorListDatabase sensorListDatabase2 = sensorListDatabaseRealmList2.get(position);
-                RealmList<SensorValueDatabase> sensorValueDatabaseRealmList2 = sensorListDatabase2.sensorValueDatabases;
-                for(SensorValueDatabase sensorValue: sensorValueDatabaseRealmList2){
-                    accelerometerList.add(new GetSensorValueModel(sensorValue.x,sensorValue.y,sensorValue.z));
-                }
-                //直線加速度センサー
-                linearAcceleList.clear();
-                RealmList<SensorListDatabase> sensorListDatabaseRealmList3 = getSensorValueDatabase.linearaccleList;
-                SensorListDatabase sensorListDatabase3 = sensorListDatabaseRealmList3.get(position);
-                RealmList<SensorValueDatabase> sensorValueDatabaseRealmList3 = sensorListDatabase3.sensorValueDatabases;
-                for(SensorValueDatabase sensorValue: sensorValueDatabaseRealmList3){
-                    accelerometerList.add(new GetSensorValueModel(sensorValue.x,sensorValue.y,sensorValue.z));
-                }
-                //回転速度センサー
-                rotationList.clear();
-                RealmList<SensorListDatabase> sensorListDatabaseRealmList4 = getSensorValueDatabase.rotationList;
-                SensorListDatabase sensorListDatabase4 = sensorListDatabaseRealmList4.get(position);
-                RealmList<SensorValueDatabase> sensorValueDatabaseRealmList4 = sensorListDatabase4.sensorValueDatabases;
-                for(SensorValueDatabase sensorValue: sensorValueDatabaseRealmList4){
-                    accelerometerList.add(new GetSensorValueModel(sensorValue.x,sensorValue.y,sensorValue.z));
+                for (SensorValueDatabase sensorValue : sensorValueDatabaseRealmList) {
+                    accelerometerList.add(new GetSensorValueModel(sensorValue.x, sensorValue.y, sensorValue.z));
                 }
             }
+//                //ジャイロスコープセンサー
+//                gyroscopeList.clear();
+//                RealmList<SensorListDatabase> sensorListDatabaseRealmList2 = getSensorValueDatabase.gyroscopeList;
+//                SensorListDatabase sensorListDatabase2 = sensorListDatabaseRealmList2.get(position);
+//                RealmList<SensorValueDatabase> sensorValueDatabaseRealmList2 = sensorListDatabase2.sensorValueDatabases;
+//                for(SensorValueDatabase sensorValue: sensorValueDatabaseRealmList2){
+//                    accelerometerList.add(new GetSensorValueModel(sensorValue.x,sensorValue.y,sensorValue.z));
+//                }
+//                //直線加速度センサー
+//                linearAcceleList.clear();
+//                RealmList<SensorListDatabase> sensorListDatabaseRealmList3 = getSensorValueDatabase.linearaccleList;
+//                SensorListDatabase sensorListDatabase3 = sensorListDatabaseRealmList3.get(position);
+//                RealmList<SensorValueDatabase> sensorValueDatabaseRealmList3 = sensorListDatabase3.sensorValueDatabases;
+//                for(SensorValueDatabase sensorValue: sensorValueDatabaseRealmList3){
+//                    accelerometerList.add(new GetSensorValueModel(sensorValue.x,sensorValue.y,sensorValue.z));
+//                }
+//                //回転速度センサー
+//                rotationList.clear();
+//                RealmList<SensorListDatabase> sensorListDatabaseRealmList4 = getSensorValueDatabase.rotationList;
+//                SensorListDatabase sensorListDatabase4 = sensorListDatabaseRealmList4.get(position);
+//                RealmList<SensorValueDatabase> sensorValueDatabaseRealmList4 = sensorListDatabase4.sensorValueDatabases;
+//                for(SensorValueDatabase sensorValue: sensorValueDatabaseRealmList4){
+//                    accelerometerList.add(new GetSensorValueModel(sensorValue.x,sensorValue.y,sensorValue.z));
+//                }
+//            }
 
 
             return new ScreenSlidePageFragment(accelerometerList,gyroscopeList,linearAcceleList,rotationList);
@@ -294,7 +304,7 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
 
         @Override
         public int getItemCount() {
-            return NUM_PAGES;
+            return 3;
         }
     }
 }
