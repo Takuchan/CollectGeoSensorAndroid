@@ -134,18 +134,14 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
 //                保存される側のMaxIDも見つけてみよう！
                 GetSensorValueDatabase getSensorValueDatabase =
                         realm.where(GetSensorValueDatabase.class).equalTo("id",nowDatabasePrimarykey).findFirst();
-                Log.d("getsensorValueDatabase",String.valueOf(getSensorValueDatabase));
-                Number maxId = realm.where(SensorListDatabase.class).max("id");
-                long nextId = 1;
-                if(maxId != null) nextId = maxId.longValue() + 1;
-//                SensorListDatabase sensorListDatabase
-//                        = realm.createObject(SensorListDatabase.class,new Long(nextId));
+                Log.d("acclerometerの数", String.valueOf(accelerometerList.size()));
+
+                SensorListDatabase sensorListDatabase = new SensorListDatabase();
                 for(GetSensorValueModel model : accelerometerList){
                     SensorValueDatabase sensorValueDatabase = new SensorValueDatabase();
                     sensorValueDatabase.x = model.getXValue();
                     sensorValueDatabase.y = model.getYValue();
                     sensorValueDatabase.z = model.getZValue();
-                    SensorListDatabase sensorListDatabase = new SensorListDatabase();
                     sensorListDatabase.sensorValueDatabases.add(sensorValueDatabase);
                     realm.executeTransaction(new Realm.Transaction() {
                         @Override
