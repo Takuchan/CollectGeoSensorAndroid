@@ -1,12 +1,15 @@
 package com.takuchan.sensortoml;
 
+
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.fragment.app.Fragment;
 import androidx.fragment.app.FragmentActivity;
 import androidx.fragment.app.FragmentManager;
+import androidx.fragment.app.FragmentTransaction;
 import androidx.viewpager2.adapter.FragmentStateAdapter;
 import androidx.viewpager2.widget.ViewPager2;
 
+import android.graphics.Color;
 import android.hardware.Sensor;
 import android.hardware.SensorEvent;
 import android.hardware.SensorEventListener;
@@ -19,6 +22,10 @@ import android.view.View;
 import android.widget.Button;
 import android.widget.TextView;
 
+import com.github.mikephil.charting.charts.LineChart;
+import com.github.mikephil.charting.data.Entry;
+import com.github.mikephil.charting.data.LineData;
+import com.github.mikephil.charting.data.LineDataSet;
 import com.google.android.material.floatingactionbutton.FloatingActionButton;
 import com.takuchan.database.sampledata.GetSensorValueDatabase;
 import com.takuchan.database.sampledata.SensorListDatabase;
@@ -26,6 +33,8 @@ import com.takuchan.database.sampledata.SensorValueDatabase;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Timer;
+import java.util.TimerTask;
 
 import io.realm.Realm;
 import io.realm.RealmList;
@@ -35,7 +44,6 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
 
     private SensorManager sensorManager;
     private Button exportButton,startButton;
-    private ViewPager2 viewPager2;
     public static TextView countDownText;
 
     private FloatingActionButton fab,fab2;
@@ -44,16 +52,17 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
     private ArrayList<GetSensorValueModel> linearAcceleList = new ArrayList<GetSensorValueModel>();
     private ArrayList<GetSensorValueModel> rotationList = new ArrayList<GetSensorValueModel>();
     private boolean startToggle = false;
-    //Fragmentのリスト
-    List<ScreenSlidePageFragment> fragments = new ArrayList<>();
-    private long countNumber = 4000; // 3秒x 1000 mms
+    private long countNumber = 1000; // 3秒x 1000 mms
+    private long refreshChartNumber = 1000; // 1秒
     private long interval = 10;
-
     Realm realm;
-
     public static long nowDatabasePrimarykey = -1;
+    private Sensor accelerometer,gyroscope,linearacc,rotation;
 
     private GetSensorValueDatabase getSensorValueDatabase;
+    private Boolean isReady = false;
+    LineChart acclelerometerChart,gyroscopeChart,linear_accChart,rotationChart;
+
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -65,23 +74,40 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
         startButton = findViewById(R.id.button2);
         exportButton = findViewById(R.id.button);
         countDownText = findViewById(R.id.countdownText);
-        viewPager2 = findViewById(R.id.pager2);
         Realm.init(this);
         realm = Realm.getDefaultInstance();
         fab.setVisibility(View.GONE);
         countDownText.setVisibility(View.GONE);
+        accelerometer = sensorManager.getDefaultSensor(Sensor.TYPE_ACCELEROMETER);
+        gyroscope = sensorManager.getDefaultSensor(Sensor.TYPE_GYROSCOPE);
+        linearacc = sensorManager.getDefaultSensor(Sensor.TYPE_LINEAR_ACCELERATION);
+        rotation = sensorManager.getDefaultSensor(Sensor.TYPE_ROTATION_VECTOR);
+
+        acclelerometerChart = findViewById(R.id.ACCELEROMETERchart);
+        gyroscopeChart = findViewById(R.id.GYROSCOPEchart);
+        linear_accChart = findViewById(R.id.LINEAR_ACCELERATIONchart);
+        rotationChart = findViewById(R.id.ROTATION_VECTORchart);
+
 
         //タイマーのインスタンスを作成
         final CountDown countDown = new CountDown(countNumber,interval);
 
-        //ViewPager2の画面変更のリスナー
+        Timer timer = new Timer(false);
+        TimerTask task = new TimerTask() {
+            @Override
+            public void run() {
 
+            }
+        };
+        timer.schedule(task,1000,refreshChartNumber);
 
         //計測開始ボタンが押された
         startButton.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
                 if(startToggle){
+                    isReady = false;
+                    timer.cancel();
                     countDown.cancel();
                     startButton.setText("計測開始");
                     fab.setVisibility(View.GONE);
@@ -111,14 +137,10 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
                         @Override
                         public void run() {
                             fab.setVisibility(View.VISIBLE);
-                            List<Sensor> sensors = new ArrayList<>();
-                            sensors = sensorManager.getSensorList(Sensor.TYPE_ALL);
-                            if(sensors.size() > 0){
-                                for (int i = 0; i < sensors.size()-1 ; i++){
-                                    Sensor s = sensors.get(i);
-                                    sensorManager.registerListener(MainActivity.this,s,SensorManager.SENSOR_DELAY_FASTEST);
-                                }
-                            }
+                            sensorManager.registerListener(MainActivity.this,accelerometer,SensorManager.SENSOR_DELAY_FASTEST);
+                            sensorManager.registerListener(MainActivity.this,gyroscope,SensorManager.SENSOR_DELAY_FASTEST);
+                            sensorManager.registerListener(MainActivity.this,linearacc,SensorManager.SENSOR_DELAY_FASTEST);
+                            sensorManager.registerListener(MainActivity.this,rotation,SensorManager.SENSOR_DELAY_FASTEST);
                         }
                     },countNumber);
 
@@ -131,87 +153,36 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
         fab.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
-//                保存される側のMaxIDも見つけてみよう！
-                GetSensorValueDatabase getSensorValueDatabase =
-                        realm.where(GetSensorValueDatabase.class).equalTo("id",nowDatabasePrimarykey).findFirst();
-                Log.d("acclerometerの数", String.valueOf(accelerometerList.size()));
-
-                SensorListDatabase sensorListDatabase = new SensorListDatabase();
-                for(GetSensorValueModel model : accelerometerList){
-                    SensorValueDatabase sensorValueDatabase = new SensorValueDatabase();
-                    sensorValueDatabase.x = model.getXValue();
-                    sensorValueDatabase.y = model.getYValue();
-                    sensorValueDatabase.z = model.getZValue();
-                    sensorListDatabase.sensorValueDatabases.add(sensorValueDatabase);
-                    realm.executeTransaction(new Realm.Transaction() {
-                        @Override
-                        public void execute(Realm realm) {
-                            getSensorValueDatabase.accelerometerList.add(sensorListDatabase);
-                        }
-                    });
-                }
-//                getSensorValueDatabase.accelerometerList.add(sensorListDatabase);
-//
-//                SensorListDatabase sensorListDatabase2
-//                        = realm.createObject(SensorListDatabase.class,new Long(nextId));
-//                for(GetSensorValueModel model : gyroscopeList){
-//                    SensorValueDatabase sensorValueDatabase = new SensorValueDatabase();
-//                    sensorValueDatabase.x = model.getXValue();
-//                    sensorValueDatabase.y = model.getYValue();
-//                    sensorValueDatabase.z = model.getZValue();
-//                    sensorListDatabase2.sensorValueDatabases.add(sensorValueDatabase);
-//                }
-//                getSensorValueDatabase.gyroscopeList.add(sensorListDatabase);
-//
-//                SensorListDatabase sensorListDatabase3
-//                        = realm.createObject(SensorListDatabase.class,new Long(nextId));
-//                for(GetSensorValueModel model : linearAcceleList){
-//                    SensorValueDatabase sensorValueDatabase = new SensorValueDatabase();
-//                    sensorValueDatabase.x = model.getXValue();
-//                    sensorValueDatabase.y = model.getYValue();
-//                    sensorValueDatabase.z = model.getZValue();
-//                    sensorListDatabase3.sensorValueDatabases.add(sensorValueDatabase);
-//                }
-//                getSensorValueDatabase.linearaccleList.add(sensorListDatabase);
-//                SensorListDatabase sensorListDatabase4
-//                        = realm.createObject(SensorListDatabase.class,new Long(nextId));
-//                for(GetSensorValueModel model : rotationList){
-//                    SensorValueDatabase sensorValueDatabase = new SensorValueDatabase();
-//                    sensorValueDatabase.x = model.getXValue();
-//                    sensorValueDatabase.y = model.getYValue();
-//                    sensorValueDatabase.z = model.getZValue();
-//                    sensorListDatabase4.sensorValueDatabases.add(sensorValueDatabase);
-//                }
-//                getSensorValueDatabase.rotationList.add(sensorListDatabase);
-
-
-                fragments.add(new ScreenSlidePageFragment(accelerometerList,gyroscopeList,linearAcceleList,rotationList));
-                Log.d("afccccのデータ数", String.valueOf(accelerometerList.size()));
-//                accelerometerList.clear();
-//                gyroscopeList.clear();
-//                linearAcceleList.clear();
-//                rotationList.clear();
-                Log.d("afccccのデータ数go", String.valueOf(accelerometerList.size()));
-
+                Log.d("加速度", String.valueOf(accelerometerList.size()));
+                Log.d("ジャイロ",String.valueOf(gyroscopeList.size()));
+                Log.d("直線加速度",String.valueOf(linearAcceleList.size()));
+                Log.d("回転加速度", String.valueOf(rotationList.size()));
+                LineData accelerometerData = ReadyGraphData(accelerometerList);
+                acclelerometerChart.setData(accelerometerData);
+                acclelerometerChart.notifyDataSetChanged();
+                acclelerometerChart.invalidate();
+                acclelerometerChart.setVisibleXRangeMaximum(120);
+                acclelerometerChart.moveViewToX(accelerometerData.getEntryCount());
+                LineData gyroData = ReadyGraphData(gyroscopeList);
+                gyroscopeChart.setData(gyroData);
+                gyroscopeChart.notifyDataSetChanged();
+                gyroscopeChart.invalidate();
+                gyroscopeChart.setVisibleXRangeMaximum(120);
+                gyroscopeChart.moveViewToX(accelerometerData.getEntryCount());
+                LineData linearData = ReadyGraphData(linearAcceleList);
+                linear_accChart.setData(linearData);
+                linear_accChart.notifyDataSetChanged();
+                linear_accChart.invalidate();
+                linear_accChart.setVisibleXRangeMaximum(120);
+                linear_accChart.moveViewToX(accelerometerData.getEntryCount());
+                LineData rotationData = ReadyGraphData(rotationList);
+                rotationChart.setData(rotationData);
+                rotationChart.notifyDataSetChanged();
+                rotationChart.invalidate();
+                rotationChart.setVisibleXRangeMaximum(120);
+                rotationChart.moveViewToX(accelerometerData.getEntryCount());
             }
         });
-        fab2.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View view) {
-                ScreenSlidePagerAdapter adapter = new ScreenSlidePagerAdapter(MainActivity.this,fragments);
-                viewPager2.setAdapter(adapter);
-            }
-        });
-
-//        viewPager2.registerOnPageChangeCallback(new ViewPager2.OnPageChangeCallback() {
-//            @Override
-//            public void onPageSelected(int position) {
-//                super.onPageSelected(position);
-//                ScreenSlidePagerAdapter adapter = new ScreenSlidePagerAdapter(MainActivity.this,fragments);
-//                viewPager2.setAdapter(adapter);
-//
-//            }
-//        });
 
     }
 
@@ -231,26 +202,34 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
         float linerX,linerY,linerZ;
         float rotationX,rotationY,rotationZ;
 
-        if (event.sensor.getType() == Sensor.TYPE_ACCELEROMETER) {
-            sensorX = event.values[0];
-            sensorY = event.values[1];
-            sensorZ = event.values[2];
-            accelerometerList.add(new GetSensorValueModel(sensorX,sensorY,sensorZ));
-        }else if(event.sensor.getType() == Sensor.TYPE_GYROSCOPE){
-            gyroX = event.values[0];
-            gyroY = event.values[1];
-            gyroZ = event.values[2];
-            gyroscopeList.add(new GetSensorValueModel(gyroX,gyroY,gyroZ));
-        }else if(event.sensor.getType() == Sensor.TYPE_LINEAR_ACCELERATION){
-            linerX = event.values[0];
-            linerY = event.values[1];
-            linerZ = event.values[2];
-            linearAcceleList.add(new GetSensorValueModel(linerX,linerY,linerZ));
-        }else if(event.sensor.getType() == Sensor.TYPE_ROTATION_VECTOR){
-            rotationX = event.values[0];
-            rotationY = event.values[1];
-            rotationZ = event.values[2];
-            rotationList.add(new GetSensorValueModel(rotationX,rotationY,rotationZ));
+        if(isReady){
+            if (event.sensor.getType() == Sensor.TYPE_ACCELEROMETER) {
+                sensorX = event.values[0];
+                sensorY = event.values[1];
+                sensorZ = event.values[2];
+                accelerometerList.add(new GetSensorValueModel(sensorX,sensorY,sensorZ));
+            }else if(event.sensor.getType() == Sensor.TYPE_GYROSCOPE){
+                gyroX = event.values[0];
+                gyroY = event.values[1];
+                gyroZ = event.values[2];
+                gyroscopeList.add(new GetSensorValueModel(gyroX,gyroY,gyroZ));
+            }else if(event.sensor.getType() == Sensor.TYPE_LINEAR_ACCELERATION){
+                linerX = event.values[0];
+                linerY = event.values[1];
+                linerZ = event.values[2];
+                linearAcceleList.add(new GetSensorValueModel(linerX,linerY,linerZ));
+            }else if(event.sensor.getType() == Sensor.TYPE_ROTATION_VECTOR) {
+                rotationX = event.values[0];
+                rotationY = event.values[1];
+                rotationZ = event.values[2];
+                rotationList.add(new GetSensorValueModel(rotationX, rotationY, rotationZ));
+            }
+
+        }else{
+            //一番センサーの電源が入るのが遅いジャイロセンサーの起動検知
+            if (event.sensor.getType() == Sensor.TYPE_GYROSCOPE) {
+                isReady = true;
+            }
         }
 
     }
@@ -259,71 +238,27 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
     public void onAccuracyChanged(Sensor sensor, int accuracy) {
 
     }
-
-    private class ScreenSlidePagerAdapter extends FragmentStateAdapter{
-        private List<ScreenSlidePageFragment> mFragmentList;
-        public ScreenSlidePagerAdapter(FragmentActivity fa, List<ScreenSlidePageFragment> fragmentList){
-            super(fa);
-            this.mFragmentList = fragmentList;
+    public static LineData ReadyGraphData(ArrayList<GetSensorValueModel> sensorArrayList){
+        ArrayList<Entry> xValues = new ArrayList<>();
+        ArrayList<Entry> yValues = new ArrayList<>();
+        ArrayList<Entry> zValues = new ArrayList<>();
+        int count = 0;
+        for (GetSensorValueModel model : sensorArrayList){
+            xValues.add(new Entry(count,model.getXValue()));
+            yValues.add(new Entry(count,model.getYValue()));
+            zValues.add(new Entry(count,model.getZValue()));
+            count ++;
         }
+        LineDataSet set1 = new LineDataSet(xValues,"X");
+        LineDataSet set2 = new LineDataSet(yValues,"Y");
+        LineDataSet set3 = new LineDataSet(zValues,"Z");
+        set1.setColor(Color.RED);
+        set2.setColor(Color.BLUE);
+        set3.setColor(Color.GREEN);
 
-
-        @Override
-        public Fragment createFragment(int position) {
-            Log.d("dataの数", String.valueOf(mFragmentList.get(position)));
-//            ArrayList<GetSensorValueModel> accelerometerList = new ArrayList<>();
-//            ArrayList<GetSensorValueModel> gyroscopeList = new ArrayList<>();
-//            ArrayList<GetSensorValueModel> linearAcceleList = new ArrayList<>();
-//            ArrayList<GetSensorValueModel> rotationList = new ArrayList<>();
-//
-//            RealmResults<GetSensorValueDatabase> realmResults = realm.where(GetSensorValueDatabase.class)
-//                    .equalTo("id", nowDatabasePrimarykey)
-//                    .findAll();
-//
-//            if(!realmResults.isEmpty()) {
-//                GetSensorValueDatabase getSensorValueDatabase =
-//                        realm.where(GetSensorValueDatabase.class).equalTo("id", nowDatabasePrimarykey).findFirst();
-//                //加速度センサー
-//                accelerometerList.clear();
-//                RealmList<SensorListDatabase> sensorListDatabaseRealmList = getSensorValueDatabase.accelerometerList;
-//                SensorListDatabase sensorListDatabase1 = sensorListDatabaseRealmList.get(position);
-//                RealmList<SensorValueDatabase> sensorValueDatabaseRealmList = sensorListDatabase1.sensorValueDatabases;
-//                for (SensorValueDatabase sensorValue : sensorValueDatabaseRealmList) {
-//                    accelerometerList.add(new GetSensorValueModel(sensorValue.x, sensorValue.y, sensorValue.z));
-//                }
-//            }
-//                //ジャイロスコープセンサー
-//                gyroscopeList.clear();
-//                RealmList<SensorListDatabase> sensorListDatabaseRealmList2 = getSensorValueDatabase.gyroscopeList;
-//                SensorListDatabase sensorListDatabase2 = sensorListDatabaseRealmList2.get(position);
-//                RealmList<SensorValueDatabase> sensorValueDatabaseRealmList2 = sensorListDatabase2.sensorValueDatabases;
-//                for(SensorValueDatabase sensorValue: sensorValueDatabaseRealmList2){
-//                    accelerometerList.add(new GetSensorValueModel(sensorValue.x,sensorValue.y,sensorValue.z));
-//                }
-//                //直線加速度センサー
-//                linearAcceleList.clear();
-//                RealmList<SensorListDatabase> sensorListDatabaseRealmList3 = getSensorValueDatabase.linearaccleList;
-//                SensorListDatabase sensorListDatabase3 = sensorListDatabaseRealmList3.get(position);
-//                RealmList<SensorValueDatabase> sensorValueDatabaseRealmList3 = sensorListDatabase3.sensorValueDatabases;
-//                for(SensorValueDatabase sensorValue: sensorValueDatabaseRealmList3){
-//                    accelerometerList.add(new GetSensorValueModel(sensorValue.x,sensorValue.y,sensorValue.z));
-//                }
-//                //回転速度センサー
-//                rotationList.clear();
-//                RealmList<SensorListDatabase> sensorListDatabaseRealmList4 = getSensorValueDatabase.rotationList;
-//                SensorListDatabase sensorListDatabase4 = sensorListDatabaseRealmList4.get(position);
-//                RealmList<SensorValueDatabase> sensorValueDatabaseRealmList4 = sensorListDatabase4.sensorValueDatabases;
-//                for(SensorValueDatabase sensorValue: sensorValueDatabaseRealmList4){
-//                    accelerometerList.add(new GetSensorValueModel(sensorValue.x,sensorValue.y,sensorValue.z));
-//                }
-//            }
-//            return new ScreenSlidePageFragment(accelerometerList,gyroscopeList,linearAcceleList,rotationList);
-            return mFragmentList.get(position);
-        }
-
-        @Override
-        public int getItemCount() {
-            return mFragmentList.size();
-        }
+        LineData lineData = new LineData(set1,set2,set3);
+        return lineData;
     }
+
 }
+
