@@ -2,12 +2,7 @@ package com.takuchan.sensortoml;
 
 
 import androidx.appcompat.app.AppCompatActivity;
-import androidx.fragment.app.Fragment;
-import androidx.fragment.app.FragmentActivity;
-import androidx.fragment.app.FragmentManager;
-import androidx.fragment.app.FragmentTransaction;
-import androidx.viewpager2.adapter.FragmentStateAdapter;
-import androidx.viewpager2.widget.ViewPager2;
+
 
 import android.graphics.Color;
 import android.hardware.Sensor;
@@ -23,22 +18,20 @@ import android.widget.Button;
 import android.widget.TextView;
 
 import com.github.mikephil.charting.charts.LineChart;
+import com.github.mikephil.charting.components.LimitLine;
+import com.github.mikephil.charting.components.XAxis;
 import com.github.mikephil.charting.data.Entry;
 import com.github.mikephil.charting.data.LineData;
 import com.github.mikephil.charting.data.LineDataSet;
 import com.google.android.material.floatingactionbutton.FloatingActionButton;
 import com.takuchan.database.sampledata.GetSensorValueDatabase;
-import com.takuchan.database.sampledata.SensorListDatabase;
-import com.takuchan.database.sampledata.SensorValueDatabase;
+
 
 import java.util.ArrayList;
-import java.util.List;
 import java.util.Timer;
 import java.util.TimerTask;
 
 import io.realm.Realm;
-import io.realm.RealmList;
-import io.realm.RealmResults;
 
 public class MainActivity extends AppCompatActivity implements SensorEventListener {
 
@@ -51,6 +44,9 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
     private ArrayList<GetSensorValueModel> gyroscopeList = new ArrayList<GetSensorValueModel>();
     private ArrayList<GetSensorValueModel> linearAcceleList = new ArrayList<GetSensorValueModel>();
     private ArrayList<GetSensorValueModel> rotationList = new ArrayList<GetSensorValueModel>();
+    private ArrayList<Integer> indexaccleList = new ArrayList<Integer>();
+    private ArrayList<Integer> indexlinearList = new ArrayList<Integer>();
+
     private boolean startToggle = false;
     private long countNumber = 1000; // 3秒x 1000 mms
     private long refreshChartNumber = 1000; // 1秒
@@ -158,6 +154,14 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
                 Log.d("直線加速度",String.valueOf(linearAcceleList.size()));
                 Log.d("回転加速度", String.valueOf(rotationList.size()));
                 LineData accelerometerData = ReadyGraphData(accelerometerList);
+                indexaccleList.add(accelerometerList.size());
+                indexlinearList.add(linearAcceleList.size());
+                //LimitLineを設定
+                XAxis xAxis = acclelerometerChart.getXAxis();
+                for (int i = 0; i < indexaccleList.size(); i++){
+                    LimitLine limitLine = ReadyGraphLimit(indexaccleList.get(i));
+                    xAxis.addLimitLine(limitLine);
+                }
                 acclelerometerChart.setData(accelerometerData);
                 acclelerometerChart.notifyDataSetChanged();
                 acclelerometerChart.invalidate();
@@ -181,6 +185,8 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
                 rotationChart.invalidate();
                 rotationChart.setVisibleXRangeMaximum(120);
                 rotationChart.moveViewToX(accelerometerData.getEntryCount());
+
+
             }
         });
 
@@ -238,6 +244,14 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
     public void onAccuracyChanged(Sensor sensor, int accuracy) {
 
     }
+
+    private static LimitLine ReadyGraphLimit(int xValue){
+        LimitLine limitLine = new LimitLine(xValue,"");
+        limitLine.setLineColor(Color.parseColor("#f6b894"));
+        limitLine.setLineWidth(2);
+        limitLine.setTextSize(10f);
+        return  limitLine;
+    }
     public static LineData ReadyGraphData(ArrayList<GetSensorValueModel> sensorArrayList){
         ArrayList<Entry> xValues = new ArrayList<>();
         ArrayList<Entry> yValues = new ArrayList<>();
@@ -252,9 +266,12 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
         LineDataSet set1 = new LineDataSet(xValues,"X");
         LineDataSet set2 = new LineDataSet(yValues,"Y");
         LineDataSet set3 = new LineDataSet(zValues,"Z");
-        set1.setColor(Color.RED);
-        set2.setColor(Color.BLUE);
-        set3.setColor(Color.GREEN);
+        set1.setColor(R.color.xAixs);
+        set2.setColor(R.color.yAixs);
+        set3.setColor(R.color.zAixs);
+        set1.setDrawCircles(false);
+        set2.setDrawCircles(false);
+        set3.setDrawCircles(false);
 
         LineData lineData = new LineData(set1,set2,set3);
         return lineData;

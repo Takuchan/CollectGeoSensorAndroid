@@ -7,4 +7,9 @@
     <color name="teal_700">#FF018786</color>
     <color name="black">#FF000000</color>
     <color name="white">#FFFFFFFF</color>
+
+    <color name="linelimitColor">#f6b894</color>
+    <color name="xAixs">#abced8</color>
+    <color name="yAixs">#59b9c6</color>
+    <color name="zAixs">#2a83a2</color>
 </resources>
