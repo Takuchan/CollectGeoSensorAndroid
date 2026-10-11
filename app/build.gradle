@@ -1,11 +1,11 @@
 plugins {
-    id 'com.android.application'
-    id 'realm-android'
+    alias libs.plugins.android.application
+    alias libs.plugins.jetbrains.kotlin.plugin.compose
 }
 
 android {
     namespace 'com.takuchan.sensortoml'
-    compileSdk 33
+    compileSdk 37
 
     defaultConfig {
         applicationId "com.takuchan.sensortoml"
@@ -24,25 +24,39 @@ android {
         }
     }
     compileOptions {
-        sourceCompatibility JavaVersion.VERSION_1_8
-        targetCompatibility JavaVersion.VERSION_1_8
+        sourceCompatibility JavaVersion.VERSION_11
+        targetCompatibility JavaVersion.VERSION_11
     }
     buildFeatures {
         viewBinding true
+        compose true
     }
 }
 
 dependencies {
 
-    implementation 'androidx.appcompat:appcompat:1.6.1'
-    implementation 'com.google.android.material:material:1.8.0'
-    implementation 'androidx.constraintlayout:constraintlayout:2.1.4'
-    implementation 'androidx.navigation:navigation-fragment:2.5.3'
-    implementation 'androidx.navigation:navigation-ui:2.5.3'
-    implementation 'androidx.legacy:legacy-support-v4:1.0.0'
-    testImplementation 'junit:junit:4.13.2'
-    androidTestImplementation 'androidx.test.ext:junit:1.1.5'
-    androidTestImplementation 'androidx.test.espresso:espresso-core:3.5.1'
+    implementation platform(libs.compose.bom)
+    implementation libs.activity.compose
+    implementation libs.appcompat
+    implementation libs.compose.material3
+    implementation libs.compose.ui
+    implementation libs.compose.ui.graphics
+    implementation libs.compose.ui.tooling.preview
+    implementation libs.lifecycle.runtime.ktx
+    implementation libs.material
+    implementation libs.constraintlayout
+    implementation libs.navigation.fragment
+    implementation libs.navigation.ui
+    implementation libs.legacy.support.v4
+    testImplementation libs.junit
+    androidTestImplementation platform(libs.compose.bom)
+    androidTestImplementation libs.compose.ui.test.junit4
+    androidTestImplementation libs.ext.junit
+    androidTestImplementation libs.espresso.core
 
-    implementation "com.github.PhilJay:MPAndroidChart:3.1.0"
+    implementation libs.mpandroidchart
+    debugImplementation libs.compose.ui.tooling
+    debugImplementation libs.compose.ui.test.manifest
+
+    implementation libs.compose.material
 }
