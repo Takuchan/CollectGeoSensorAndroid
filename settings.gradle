@@ -16,3 +16,4 @@ dependencyResolutionManagement {
 }
 rootProject.name = "SensorToML"
 include ':app'
+include ':collectGeo'
